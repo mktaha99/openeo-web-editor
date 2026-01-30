@@ -53,6 +53,10 @@ export default {
 					let url = new URL(service.url);
 					url.searchParams.set('service', 'wmts');
 					url.searchParams.set('request', 'GetCapabilities');
+					// Add layer parameter if available for faster response (server-side filtering)
+					if (service.attributes?.layers?.[0]) {
+						url.searchParams.set('layer', service.attributes.layers[0]);
+					}
 					let response = await Utils.axios().get(url.toString(), { responseType: 'text' });
 					var parser = new WMTSCapabilities();
 					this.WMTSCapabilities[service.url] = parser.read(response.data);
