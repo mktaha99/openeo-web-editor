@@ -53,6 +53,10 @@ export default {
 					let url = new URL(service.url);
 					url.searchParams.set('service', 'wmts');
 					url.searchParams.set('request', 'GetCapabilities');
+					// Add layer parameter if available for faster response (server-side filtering)
+					if (service.attributes?.layers?.[0]) {
+						url.searchParams.set('layer', service.attributes.layers[0]);
+					}
 					let response = await Utils.axios().get(url.toString(), { responseType: 'text' });
 					var parser = new WMTSCapabilities();
 					this.WMTSCapabilities[service.url] = parser.read(response.data);
@@ -92,8 +96,25 @@ export default {
 					layer,
 					matrixSet: 'EPSG:3857'
 				});
+				// optionsFromCapabilities may return null for unsupported layers
+				if (!options) {
+					console.warn(`WMTS options missing for layer ${layer}, skipping`);
+					continue;
+				}
+				// Ensure dimensions object exists to avoid null reads
+				if (!options.dimensions) {
+					options.dimensions = {};
+				}
 				if (!defaultDate) {
-					defaultDate = new Date(options.dimensions.TIME);
+					if (options.dimensions && options.dimensions.TIME) {
+						defaultDate = new Date(options.dimensions.TIME);
+					} else {
+						// fallback to capabilities times if available
+						let times = this.getWMTSTimes(capabilities, layer);
+						if (times.length) {
+							defaultDate = new Date(times[0]);
+						}
+					}
 				}
 
 				let times = this.getWMTSTimes(capabilities, layer);
@@ -108,9 +129,56 @@ export default {
 					}
 				}
 				if (Utils.isObject(attrs.dimensions)) {
+					// options.dimensions exists (ensured above)
 					Object.assign(options.dimensions, service.attributes.dimensions);
 				}
 				source = new WMTS(options);
+				// Ensure WMTS tile requests use 'dim_time' and only the first time value
+				// Some WMTS servers expect a dimension parameter named 'dim_time' with a single value
+				// OpenLayers will generate a tile URL which we can rewrite just before the tile is loaded.
+				try {
+					// OpenLayers tileLoadFunction signature: (imageTile, src)
+					// imageTile.getImage() returns the HTMLImageElement used for loading
+					source.setTileLoadFunction(function(imageTile, src) {
+						try {
+							// Some sources may pass relative URLs, provide base
+							let url = new URL(src, window.location.href);
+							if (url.searchParams.has('time')) {
+								let t = url.searchParams.get('time') || '';
+								let first = t.split('/')[0];
+								url.searchParams.delete('time');
+								url.searchParams.set('dim_time', first);
+							}
+							// If dim_time already present and contains multiple comma-separated values,
+							// reduce it to only the first value. Handle percent-encoded commas as well.
+							if (url.searchParams.has('dim_time')) {
+								let dt = url.searchParams.get('dim_time') || '';
+								// Decode to handle %2C, then split on comma and take first
+								let decoded = decodeURIComponent(dt);
+								let firstPart = decoded.split(',')[0];
+								// Re-encode safe value and set
+								url.searchParams.set('dim_time', encodeURIComponent(firstPart));
+							}
+							const img = imageTile.getImage && imageTile.getImage();
+							if (img) {
+								img.src = url.toString();
+							} else {
+								// Fallback: set the tile's src property if available
+								imageTile.src = url.toString();
+							}
+						} catch (err) {
+							try {
+								const img = imageTile.getImage && imageTile.getImage();
+								if (img) img.src = src;
+								else imageTile.src = src;
+							} catch (e) {
+								// give up silently
+							}
+						}
+					});
+				} catch (e) {
+					// ignore if source doesn't support tile load function
+				}
 				var mapLayer = new TileLayer({
 					title,
 					source: this.trackTileProgress(source),

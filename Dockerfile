@@ -28,6 +28,6 @@ RUN printf 'server {\n\
     }\n\
 \n\
     location = /editor {\n\
-        return 301 /editor/;\n\
+        return 301 /editor/$is_args$args;\n\
     }\n\
 }\n' > /etc/nginx/conf.d/default.conf
