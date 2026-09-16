@@ -15,7 +15,7 @@
 			</label>
 		</div>
 		<div class="search-results">
-			<Collections class="category" :collections="collections" :searchTerm="searchTerm" :offerDetails="false" :collapsed="collapsed" :hideDeprecated="!showDeprecated" :hideExperimental="!showExperimental" :federation="federation" :missing="federationMissing.collections">
+			<Collections class="category" :collections="collections" :searchTerm="searchTerm" :offerDetails="false" :collapsed="collapsed" :hideDeprecated="!showDeprecated" :hideExperimental="!showExperimental" :federation="federation" :missing="federationMissing.collections" :heading="collectionsHeading">
 				<template #summary="{ item }">
 					<div class="discovery-entity" :draggable="supportsLoadCollection" @dragstart="onDrag($event, 'collection', item)">
 						<div class="discovery-info" @click="showCollectionInfo(item.id)">
@@ -107,10 +107,16 @@ export default {
 		};
 	},
 	computed: {
-		...Utils.mapState(['collections', 'udfRuntimes']),
+		...Utils.mapState(['collections', 'collectionsLoading', 'udfRuntimes']),
 		...Utils.mapState('editor', ['discoverySearchTerm']),
 		...Utils.mapState(['federationMissing']),
 		...Utils.mapGetters(['federation', 'supports', 'fileFormats', 'processes']),
+		collectionsHeading() {
+			if (this.collectionsLoading) {
+				return 'Collections - loading…';
+			}
+			return 'Collections';
+		},
 		supportsLoadCollection() {
 			return this.processes.has('load_collection');
 		},

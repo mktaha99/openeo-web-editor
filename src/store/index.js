@@ -50,6 +50,7 @@ const getDefaultState = () => {
 		},
 		processesUpdated: 0,
 		collections: [],
+		collectionsLoading: false,
 		processNamespaces: Config.processNamespaces || [],
 		pageLimit: Config.pageLimit,
 		federationMissing: {
@@ -199,14 +200,13 @@ export default new Vuex.Store({
 			let errors = [];
 			let capabilities = cx.state.connection.capabilities();
 
-			// Request collections
+			// Load collections async — don't block login
 			if (capabilities.hasFeature('listCollections')) {
-				promises.push(cx.state.connection.listCollections()
+				cx.state.collectionsLoading = true;
+				cx.state.connection.listCollections()
 					.then(response => cx.commit('collections', response))
-					.catch(error => errors.push(error)));
-			}
-			else {
-				errors.push(new Error("Collections not supported by the server."));
+					.catch(error => errors.push(error))
+					.finally(() => { cx.state.collectionsLoading = false; });
 			}
 
 			if (!refresh) { // Only load on first discovery, otherwise the JS client already refreshes the data
