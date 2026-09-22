@@ -7,6 +7,7 @@
 					<li v-if="!simpleMode"><div class="menuItem" @click="showHelp" title="Start a guided tour"><i class="fas fa-question-circle fa-fw"></i>Help</div></li>
 					<li v-if="!simpleMode"><div class="menuItem" @click="showWizard()" title="Start the process wizard"><i class="fas fa-magic fa-fw"></i>Wizard</div></li>
 					<li><div class="menuItem" @click="showServerInfo" title="Get server information"><i class="fas fa-info-circle fa-fw"></i>Server</div></li>
+					<li v-if="isAuthenticated"><WorkspacesMenu /></li>
 					<li><UserMenu /></li>
 				</ul>
 			</header>
@@ -49,6 +50,7 @@ import EventBusMixin from './EventBusMixin.js';
 import Utils from '../utils.js';
 import UserMenu from './UserMenu.vue';
 import UserWorkspace from './UserWorkspace.vue';
+import WorkspacesMenu from './WorkspacesMenu.vue';
 import Viewer from './Viewer.vue';
 import Editor from './Editor.vue';
 import Logo from './Logo.vue';
@@ -72,6 +74,7 @@ export default {
 		Viewer,
 		UserMenu,
 		UserWorkspace,
+		WorkspacesMenu,
 		Splitpanes,
 		Pane
 	},

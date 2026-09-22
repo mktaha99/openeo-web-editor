@@ -48,7 +48,8 @@ export default {
 		Tour: () => import('./components/Tour.vue'),
 		UdfRuntimeModal: () => import('./components/modals/UdfRuntimeModal.vue'),
 		WebEditorModal: () => import('./components/modals/WebEditorModal.vue'),
-		WizardModal: () => import('./components/modals/WizardModal.vue')
+		WizardModal: () => import('./components/modals/WizardModal.vue'),
+		WorkspaceModal: () => import('./components/modals/WorkspaceModal.vue')
 	},
 	data() {
 		return {

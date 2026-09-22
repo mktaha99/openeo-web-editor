@@ -13,6 +13,7 @@ import files from './files';
 import jobs from './jobs';
 import services from './services';
 import userProcesses from './userProcesses';
+import workspaces from './workspaces';
 
 Vue.use(Vuex);
 
@@ -68,7 +69,8 @@ export default new Vuex.Store({
 		files,
 		jobs,
 		services,
-		userProcesses
+		userProcesses,
+		workspaces
 	},
 	state: getDefaultState(),
 	getters: {

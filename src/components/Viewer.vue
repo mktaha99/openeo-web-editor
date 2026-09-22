@@ -173,10 +173,15 @@ export default {
 				this.$refs.tabs.closeTab(tab);
 			}
 		},
-		showSyncResults(result) {
+		async showSyncResults(result) {
 			let title = this.makeTitle("Result");
-			// result.data should always be a blob
-			let files = this.formatRegistry.createFilesFromBlob(result.data);
+			// result.data is a blob, but if it's a STAC resource (e.g. returned by
+			// export_workspace, which never streams the raw file - see the process spec)
+			// its actual assets are described inside the JSON, not the blob itself
+			let stac = await this.tryParseStac(result.data);
+			let files = stac
+				? this.formatRegistry.createFilesFromSTAC(stac)
+				: this.formatRegistry.createFilesFromBlob(result.data);
 			// Download files to disc so that nothing gets lost
 			files.forEach(file => file.download());
 			// Show the data in the viewer
@@ -188,6 +193,17 @@ export default {
 						this.showLogs(result.logs, title, false);
 					}
 				});
+		},
+		async tryParseStac(blob) {
+			if (!(blob instanceof Blob) || !blob.type.includes('json')) {
+				return null;
+			}
+			try {
+				let data = JSON.parse(await blob.text());
+				return (Utils.isObject(data) && typeof data.stac_version === 'string' && Utils.isObject(data.assets)) ? data : null;
+			} catch (error) {
+				return null;
+			}
 		},
 		showJobResults(stac, job = null, title = null, showMetadata = false) {
 			if (title === null) {

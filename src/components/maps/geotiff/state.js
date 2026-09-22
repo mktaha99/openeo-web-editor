@@ -67,9 +67,10 @@ export default class GeoTiffState {
 		}
 		else {
 			color.push('color');
-			color.push(this.getFormula(0));
-			color.push(this.getFormula(1));
-			color.push(this.getFormula(2));
+			for (let i = 0; i < 3; i++) {
+				let idx = Math.min(i, this.channels.length - 1);
+				color.push(this.getFormula(idx));
+			}
 			if (this.noData.length > 0) {
 				color.push(this.getNoDataFormula());
 			}
