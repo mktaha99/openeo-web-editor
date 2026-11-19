@@ -12,6 +12,9 @@
 		<Tab v-if="showFiles" id="files" name="Files" icon="fa-file" @show="onShow" @hide="onHide">
 			<FilePanel />
 		</Tab>
+		<Tab id="schedules" name="Schedules" icon="fa-calendar" @show="onShow" @hide="onHide">
+			<SchedulePanel />
+		</Tab>
 	</Tabs>
 </template>
 
@@ -23,6 +26,7 @@ import FilePanel from './FilePanel.vue';
 import JobPanel from './JobPanel.vue';
 import CustomProcessPanel from './CustomProcessPanel.vue';
 import ServicePanel from './ServicePanel.vue';
+import SchedulePanel from './SchedulePanel.vue';
 
 export default {
 	name: 'UserWorkspace',
@@ -31,6 +35,7 @@ export default {
 		JobPanel,
 		CustomProcessPanel,
 		ServicePanel,
+		SchedulePanel,
 		Tabs,
 		Tab
 	},
