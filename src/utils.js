@@ -426,6 +426,30 @@ class Utils extends VueUtils {
 		return confirm(`You are about to open ${files.length} individual files / tabs, which could slow down the web browser. Are you sure you want to open all of them?`);
 	}
 
+	// Plain-English version of the common cron shapes, null for anything else
+	static cronToHuman(cron) {
+		const parts = (cron || '').trim().split(/\s+/);
+		if (parts.length !== 5) {
+			return null;
+		}
+		const [min, hour, dom, mon, dow] = parts;
+		if (mon !== '*' || !/^\d+$/.test(min) || !/^\d+$/.test(hour)) {
+			return null;
+		}
+		const time = `${hour.padStart(2, '0')}:${min.padStart(2, '0')} UTC`;
+		if (dom === '*' && dow === '*') {
+			return `Every day at ${time}`;
+		}
+		if (dom === '*' && /^[0-6]$/.test(dow)) {
+			const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow];
+			return `Every ${day} at ${time}`;
+		}
+		if (dow === '*' && /^\d+$/.test(dom)) {
+			return `Day ${dom} of every month at ${time}`;
+		}
+		return null;
+	}
+
 };
 
 Utils.mapState = mapState;

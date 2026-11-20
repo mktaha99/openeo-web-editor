@@ -83,6 +83,11 @@ export default {
 			const resp = await axios.get(`${url}/schedules/${id}/runs`, { headers: authHeaders(rootState) });
 			return resp.data.runs || [];
 		},
+		async resolve({ rootState }, parameters) {
+			const url = apiUrl(null, rootState);
+			const resp = await axios.post(`${url}/schedules/resolve`, parameters, { headers: authHeaders(rootState) });
+			return resp.data;
+		},
 	},
 	mutations: {
 		setAll(state, schedules) {

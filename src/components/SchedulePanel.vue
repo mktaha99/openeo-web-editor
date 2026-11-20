@@ -1,14 +1,14 @@
 <template>
 	<div id="SchedulePanel">
 		<div class="toolbar">
-			<button @click="showCreateForm" title="Create a new recurring schedule"><i class="fas fa-plus"></i> New Schedule</button>
+			<button @click="showCreateForm" :disabled="!hasProcess" title="Schedule the process from the Visual Model"><i class="fas fa-calendar-plus"></i> New Schedule</button>
 			<button @click="refresh" title="Refresh the list"><i class="fas fa-sync"></i></button>
 		</div>
 
 		<div v-if="loading" class="loading">Loading schedules...</div>
 
 		<div v-else-if="schedules.length === 0" class="empty">
-			No schedules yet. Click <strong>New Schedule</strong> to create one.
+			No schedules yet. Build a process in the Visual Model, then click <strong>Schedule</strong> in Data Processing or <strong>New Schedule</strong> here.
 		</div>
 
 		<div v-else class="schedule-list">
@@ -35,55 +35,10 @@
 					<button v-if="s.status === 'active'" @click="pause(s)" title="Pause this schedule"><i class="fas fa-pause"></i> Pause</button>
 					<button v-if="s.status === 'paused'" @click="resume(s)" title="Resume this schedule"><i class="fas fa-play"></i> Resume</button>
 					<button @click="showEditForm(s)" title="Edit this schedule"><i class="fas fa-edit"></i> Edit</button>
+					<button @click="showInEditor(s)" title="Open this schedule's process in the Visual Model"><i class="fas fa-project-diagram"></i> Visual Model</button>
 					<button @click="triggerNow(s)" title="Run this schedule now"><i class="fas fa-bolt"></i> Trigger Now</button>
 					<button @click="showRuns(s)" title="View run history"><i class="fas fa-list"></i> Runs</button>
 					<button @click="deleteSchedule(s)" title="Delete this schedule" class="danger"><i class="fas fa-trash"></i></button>
-				</div>
-			</div>
-		</div>
-
-		<!-- Create / Edit modal -->
-		<div v-if="formVisible" class="modal-overlay" @click.self="formVisible = false">
-			<div class="modal-content schedule-form">
-				<h3>{{ editing ? 'Edit Schedule' : 'New Schedule' }}</h3>
-
-				<label>Title</label>
-				<input v-model="form.title" placeholder="Weekly AETI analysis" />
-
-				<label>Cron Expression</label>
-				<div class="cron-row">
-					<input v-model="form.cron" placeholder="0 6 * * 0" />
-					<span class="cron-preview">{{ cronToHuman(form.cron) }}</span>
-				</div>
-				<div class="cron-presets">
-					<button @click="form.cron = '0 6 * * 0'" type="button">Every Sunday 06:00</button>
-					<button @click="form.cron = '0 0 1 * *'" type="button">1st of month</button>
-					<button @click="form.cron = '0 3 * * *'" type="button">Every day 03:00</button>
-				</div>
-
-				<label>Parameters</label>
-				<div v-for="(_, idx) in form.params" :key="idx" class="param-row">
-					<input v-model="form.params[idx].name" placeholder="start_date" />
-					<input v-model="form.params[idx].value" placeholder="today - 50d" />
-					<button @click="form.params.splice(idx, 1)" type="button" class="danger small"><i class="fas fa-times"></i></button>
-				</div>
-				<button @click="form.params.push({name: '', value: ''})" type="button" class="small">
-					<i class="fas fa-plus"></i> Add Parameter
-				</button>
-
-				<label>Process Graph</label>
-				<div class="graph-actions">
-					<button @click="useCurrentGraph" type="button" class="small">
-						<i class="fas fa-project-diagram"></i> Use Current Graph
-					</button>
-				</div>
-				<textarea v-model="form.processJson" rows="12" placeholder='Paste process graph JSON with {"$param": "name"} markers' />
-
-				<div v-if="formError" class="form-error">{{ formError }}</div>
-
-				<div class="form-buttons">
-					<button @click="formVisible = false" type="button">Cancel</button>
-					<button @click="submitForm" type="button" class="primary">{{ editing ? 'Save' : 'Create' }}</button>
 				</div>
 			</div>
 		</div>
@@ -112,15 +67,15 @@
 </template>
 
 <script>
+import Utils from '../utils.js';
+import EventBusMixin from './EventBusMixin';
+
 export default {
 	name: 'SchedulePanel',
+	mixins: [EventBusMixin],
 	data() {
 		return {
 			loading: false,
-			formVisible: false,
-			editing: null,
-			formError: null,
-			form: this.emptyForm(),
 			runsVisible: false,
 			runsLoading: false,
 			runsScheduleTitle: '',
@@ -128,6 +83,8 @@ export default {
 		};
 	},
 	computed: {
+		...Utils.mapGetters('editor', ['hasProcess']),
+		...Utils.mapState('editor', ['process']),
 		schedules() {
 			return this.$store.state.schedules.schedules;
 		},
@@ -136,14 +93,6 @@ export default {
 		await this.refresh();
 	},
 	methods: {
-		emptyForm() {
-			return {
-				title: '',
-				cron: '0 6 * * 0',
-				params: [{ name: '', value: '' }],
-				processJson: '',
-			};
-		},
 		async refresh() {
 			this.loading = true;
 			try {
@@ -154,86 +103,18 @@ export default {
 			this.loading = false;
 		},
 		showCreateForm() {
-			this.editing = null;
-			this.form = this.emptyForm();
-			this.formError = null;
-			this.formVisible = true;
+			this.broadcast('showModal', 'ScheduleModal', { process: this.process });
 		},
 		showEditForm(schedule) {
-			this.editing = schedule.id;
-			this.form = {
-				title: schedule.title || '',
-				cron: schedule.cron,
-				params: Object.entries(schedule.parameters || {}).map(([name, value]) => ({
-					name,
-					value: typeof value === 'string' ? value : JSON.stringify(value),
-				})),
-				processJson: JSON.stringify(schedule.process, null, 2),
-			};
-			if (this.form.params.length === 0) {
-				this.form.params.push({ name: '', value: '' });
-			}
-			this.formError = null;
-			this.formVisible = true;
+			this.broadcast('showModal', 'ScheduleModal', { process: schedule.process, schedule });
 		},
-		useCurrentGraph() {
-			try {
-				const pg = this.$store.getters['editor/processGraph'];
-				if (pg) {
-					this.form.processJson = JSON.stringify({ process_graph: pg.toJSON() }, null, 2);
-				} else {
-					this.formError = 'No process graph in the editor.';
-				}
-			} catch (e) {
-				this.formError = 'Could not read the editor process graph.';
-			}
-		},
-		buildPayload() {
-			let process;
-			try {
-				process = JSON.parse(this.form.processJson);
-			} catch {
-				throw new Error('Invalid JSON in process graph.');
-			}
-			const parameters = {};
-			for (const p of this.form.params) {
-				if (!p.name.trim()) continue;
-				let val = p.value.trim();
-				// try to parse as JSON for numbers, arrays, bools
-				try {
-					val = JSON.parse(val);
-				} catch {
-					// keep as string (e.g. "today - 50d")
-				}
-				parameters[p.name.trim()] = val;
-			}
-			return {
-				process,
-				parameters,
-				cron: this.form.cron,
-				title: this.form.title || undefined,
-			};
-		},
-		async submitForm() {
-			this.formError = null;
-			let payload;
-			try {
-				payload = this.buildPayload();
-			} catch (e) {
-				this.formError = e.message;
+		showInEditor(schedule) {
+			if (this.hasProcess && !confirm('This replaces the process in the Visual Model. Continue?')) {
 				return;
 			}
-			try {
-				if (this.editing) {
-					await this.$store.dispatch('schedules/update', { id: this.editing, data: payload });
-				} else {
-					await this.$store.dispatch('schedules/create', payload);
-				}
-				this.formVisible = false;
-			} catch (e) {
-				const msg = e.response?.data?.message || e.message;
-				this.formError = msg;
-			}
+			// pass the whole schedule so its title shows in the editor header; clone so edits don't touch the list
+			this.$store.commit('editor/setContext', Utils.deepClone(schedule));
+			Utils.info(this, 'When you are done, click Edit on the schedule and "Use process from Visual Model".');
 		},
 		async pause(s) {
 			try {
@@ -279,30 +160,11 @@ export default {
 			this.runsLoading = false;
 		},
 		cronToHuman(cron) {
-			if (!cron) return '';
-			try {
-				const parts = cron.split(' ');
-				if (parts.length !== 5) return cron;
-				const [min, hour, dom, mon, dow] = parts;
-				const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-				if (dow !== '*' && dom === '*' && mon === '*') {
-					return `Every ${days[parseInt(dow)] || dow} at ${hour.padStart(2, '0')}:${min.padStart(2, '0')} UTC`;
-				}
-				if (dom !== '*' && dow === '*' && mon === '*') {
-					const suffix = dom === '1' ? 'st' : dom === '2' ? 'nd' : dom === '3' ? 'rd' : 'th';
-					return `${dom}${suffix} of every month at ${hour.padStart(2, '0')}:${min.padStart(2, '0')} UTC`;
-				}
-				if (dom === '*' && dow === '*' && mon === '*') {
-					return `Every day at ${hour.padStart(2, '0')}:${min.padStart(2, '0')} UTC`;
-				}
-				return cron;
-			} catch {
-				return cron;
-			}
+			return Utils.cronToHuman(cron) || cron;
 		},
 		formatDate(dateStr) {
-			if (!dateStr) return '';
-			return new Date(dateStr).toLocaleString();
+			// same format as the Data Processing tab, so runs are easy to match
+			return Utils.formatTimestamp(dateStr, '');
 		},
 		timeAgo(dateStr) {
 			if (!dateStr) return '';
@@ -349,26 +211,6 @@ export default {
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .modal-content { background: #fff; border-radius: 8px; padding: 20px; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; }
 .modal-content h3 { margin-top: 0; }
-.modal-content label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9em; }
-.modal-content input, .modal-content textarea { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 0.9em; box-sizing: border-box; }
-.modal-content textarea { resize: vertical; }
-
-.cron-row { display: flex; gap: 8px; align-items: center; }
-.cron-row input { flex: 1; }
-.cron-preview { font-size: 0.85em; color: #555; white-space: nowrap; }
-.cron-presets { display: flex; gap: 4px; margin-top: 4px; }
-.cron-presets button { font-size: 0.75em; cursor: pointer; padding: 2px 6px; border: 1px solid #ccc; border-radius: 3px; background: #f8f9fa; }
-
-.param-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
-.param-row input { flex: 1; }
-button.small { font-size: 0.8em; padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px; background: #fff; margin-top: 4px; }
-
-.graph-actions { margin-top: 4px; }
-
-.form-error { color: #dc3545; margin-top: 8px; padding: 6px; background: #f8d7da; border-radius: 4px; font-size: 0.9em; }
-.form-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-.form-buttons button { padding: 6px 16px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; }
-.form-buttons button.primary { background: #0d6efd; color: #fff; border-color: #0d6efd; }
 
 /* Runs modal */
 .runs-list { max-height: 400px; overflow-y: auto; }
