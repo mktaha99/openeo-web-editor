@@ -5,7 +5,7 @@
 				<AsyncButton title="Create a new job from the process in the process editor for batch processing" :fn="createJobFromScript" v-show="supportsCreate" :disabled="!this.hasProcess" fa confirm icon="fas fa-plus">Create Batch Job</AsyncButton>
 				<AsyncButton title="Run the process from the process editor with default settings now, and view the results without storing them permanently" :fn="executeProcess" v-show="supports('computeResult')" :disabled="!this.hasProcess" fa confirm icon="fas fa-play">Run directly</AsyncButton>
 				<AsyncButton title="Run the process from the process editor with custom settings, and view the results without storing them permanently" :fn="executeProcessWithOptions" v-show="supports('computeResult')" :disabled="!this.hasProcess" fa confirm icon="fas fa-play">Run with options</AsyncButton>
-				<AsyncButton title="Run the process from the process editor on a recurring schedule" :fn="() => scheduleProcess(process)" :disabled="!this.hasProcess" fa icon="fas fa-calendar-plus">Schedule</AsyncButton>
+				<AsyncButton title="Run the process from the process editor on a recurring schedule, loading data from start_date to end_date" :fn="() => scheduleProcess(process)" :disabled="!this.hasProcess" fa icon="fas fa-calendar-plus">Schedule</AsyncButton>
 				<SyncButton v-if="supportsList" :name="pluralizedName" :sync="reloadData" />
 				<FullscreenButton :element="() => this.$el" />
 			</template>
