@@ -42,6 +42,7 @@ export default {
 		ParameterModal: () => import('./components/modals/ParameterModal.vue'),
 		ProcessModal: () => import('./components/modals/ProcessModal.vue'),
 		ProcessParameterModal: () => import('./components/modals/ProcessParameterModal.vue'),
+		ScheduleModal: () => import('./components/modals/ScheduleModal.vue'),
 		ServerInfoModal: () => import('./components/modals/ServerInfoModal.vue'),
 		ServiceInfoModal: () => import('./components/modals/ServiceInfoModal.vue'),
 		ShareModal: () => import('./components/modals/ShareModal.vue'),

@@ -5,6 +5,7 @@
 				<AsyncButton title="Create a new job from the process in the process editor for batch processing" :fn="createJobFromScript" v-show="supportsCreate" :disabled="!this.hasProcess" fa confirm icon="fas fa-plus">Create Batch Job</AsyncButton>
 				<AsyncButton title="Run the process from the process editor with default settings now, and view the results without storing them permanently" :fn="executeProcess" v-show="supports('computeResult')" :disabled="!this.hasProcess" fa confirm icon="fas fa-play">Run directly</AsyncButton>
 				<AsyncButton title="Run the process from the process editor with custom settings, and view the results without storing them permanently" :fn="executeProcessWithOptions" v-show="supports('computeResult')" :disabled="!this.hasProcess" fa confirm icon="fas fa-play">Run with options</AsyncButton>
+				<AsyncButton title="Run the process from the process editor on a recurring schedule, loading data from start_date to end_date" :fn="() => scheduleProcess(process)" :disabled="!this.hasProcess" fa icon="fas fa-calendar-plus">Schedule</AsyncButton>
 				<SyncButton v-if="supportsList" :name="pluralizedName" :sync="reloadData" />
 				<FullscreenButton :element="() => this.$el" />
 			</template>
@@ -13,6 +14,7 @@
 				<AsyncButton title="Create a cost and time estimate for this job" :fn="() => estimateJob(p.row)" v-show="supportsEstimate" fa icon="fas fa-file-invoice-dollar"></AsyncButton>
 				<AsyncButton title="Edit the metadata of this job" :fn="() => editMetadata(p.row)" v-show="supportsUpdate" :disabled="!isJobInactive(p.row)" fa icon="fas fa-edit"></AsyncButton>
 				<AsyncButton title="Edit the process of this job in the process editor" confirm :fn="() => showInEditor(p.row)" v-show="supportsRead" fa icon="fas fa-project-diagram"></AsyncButton>
+				<AsyncButton title="Run this job's process on a recurring schedule" :fn="() => scheduleJob(p.row)" v-show="supportsRead" fa icon="fas fa-calendar-plus"></AsyncButton>
 				<AsyncButton title="Delete this job from the server, including all results" :fn="() => deleteJob(p.row)" v-show="supportsDelete" fa icon="fas fa-trash"></AsyncButton>
 				<AsyncButton title="Start the processing on the server" :fn="() => queueJob(p.row)" v-show="supportsStart && isJobInactive(p.row)" fa icon="fas fa-play-circle"></AsyncButton>
 				<AsyncButton title="Cancel the processing" :fn="() => cancelJob(p.row)" v-show="supportsStop && isJobActive(p.row)" fa icon="fas fa-stop-circle"></AsyncButton>
@@ -160,6 +162,13 @@ export default {
 		},
 		async showInEditor(job) {
 			await this.refreshElement(job, updatedJob => this.broadcast('editProcess', updatedJob));
+		},
+		scheduleProcess(process, defaultTitle = '') {
+			this.broadcast('showModal', 'ScheduleModal', {process, defaultTitle});
+		},
+		async scheduleJob(job) {
+			// the job list doesn't include the process, so load the full job first
+			await this.refreshElement(job, updatedJob => this.scheduleProcess(updatedJob.process, updatedJob.title || ''));
 		},
 		async startAndQueueProcess(options) {
 			const job = await this.createJob(this.process, options);
