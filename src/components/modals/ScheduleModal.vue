@@ -25,7 +25,7 @@
 			</div>
 			<div v-else class="params">
 				<div v-for="p in params" :key="p.name" class="param-row">
-					<span class="param-name" :title="p.name">{{ labels[p.name] || p.name }}</span>
+					<span class="param-name" :title="p.name">{{ labels[p.name] }}</span>
 					<!-- one box per date: a dropdown, which turns into a text box for any other date or rule -->
 					<select v-if="!p.custom" :value="p.value" @change="pickDate(p, $event.target.value)">
 						<option value="" disabled>Choose…</option>
@@ -174,7 +174,7 @@ export default {
 		optionFor(name, value) {
 			// "today-30d" and "today - 30d" are the same rule
 			const squash = text => text.replace(/\s+/g, '');
-			return (DATE_OPTIONS[name] || []).find(o => squash(o.value) === squash(value));
+			return DATE_OPTIONS[name].find(o => squash(o.value) === squash(value));
 		},
 		pickDate(p, choice) {
 			if (choice !== CUSTOM) {
@@ -226,7 +226,7 @@ export default {
 				this.error = this.check.fixable ? `${this.check.problem} Click "Use start/end dates" first.` : this.check.problem;
 				return;
 			}
-			const label = p => this.labels[p.name] || p.name;
+			const label = p => this.labels[p.name];
 			const empty = this.params.filter(p => p.value.trim() === '').map(label);
 			if (empty.length > 0) {
 				this.error = `Choose a date for: ${empty.join(', ')}`;
@@ -237,17 +237,11 @@ export default {
 				this.error = `Not valid dates: ${invalid.join(', ')}`;
 				return;
 			}
-			let process;
-			try {
-				process = JSON.parse(this.processJson);
-			} catch {
-				this.error = 'The process JSON is not valid.';
-				return;
-			}
 			const data = {
 				title: this.title || null,
 				cron: this.cron.trim(),
-				process,
+				// check.ok means the JSON parsed
+				process: JSON.parse(this.processJson),
 				parameters: this.filledParameters()
 			};
 			try {

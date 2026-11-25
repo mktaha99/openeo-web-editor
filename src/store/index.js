@@ -360,6 +360,7 @@ export default new Vuex.Store({
 				cx.commit('files/reset');
 				cx.commit('services/reset');
 				cx.commit('userProcesses/reset');
+				cx.commit('schedules/reset');
 			}
 			else {
 				cx.commit('authenticated', false);

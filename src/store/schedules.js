@@ -5,16 +5,15 @@
 import Vue from 'vue';
 import axios from 'axios';
 
-function apiUrl(state, rootState) {
-	let url = rootState.connection ? rootState.connection.getBaseUrl() : '';
-	// remove trailing slash
-	return url.replace(/\/$/, '');
-}
-
-function authHeaders(rootState) {
-	const token = rootState.connection?.authProvider?.getToken?.();
-	if (!token) return {};
-	return { Authorization: `Bearer ${token}` };
+function request(rootState, method, path = '', data = undefined) {
+	const connection = rootState.connection;
+	const token = connection.authProvider?.getToken?.();
+	return axios({
+		method,
+		url: connection.getBaseUrl().replace(/\/$/, '') + '/schedules' + path,
+		data,
+		headers: token ? { Authorization: `Bearer ${token}` } : {},
+	});
 }
 
 export default {
@@ -22,66 +21,43 @@ export default {
 	state: () => ({
 		schedules: [],
 	}),
-	getters: {
-		getById: (state) => (id) => state.schedules.find(s => s.id === id) || null,
-	},
 	actions: {
 		async list({ commit, rootState }) {
-			const url = apiUrl(null, rootState);
-			const resp = await axios.get(`${url}/schedules`, { headers: authHeaders(rootState) });
-			commit('setAll', resp.data.schedules || []);
-			return resp.data.schedules;
+			const resp = await request(rootState, 'get');
+			commit('setAll', resp.data.schedules);
 		},
 		async get({ commit, rootState }, id) {
-			const url = apiUrl(null, rootState);
-			const resp = await axios.get(`${url}/schedules/${id}`, { headers: authHeaders(rootState) });
+			const resp = await request(rootState, 'get', `/${id}`);
 			commit('upsert', resp.data);
 			return resp.data;
 		},
-		async create({ commit, rootState }, data) {
-			const url = apiUrl(null, rootState);
-			const resp = await axios.post(`${url}/schedules`, data, { headers: authHeaders(rootState) });
-			const id = resp.headers['openeo-identifier'];
-			// fetch the full schedule to add to the store
-			const full = await axios.get(`${url}/schedules/${id}`, { headers: authHeaders(rootState) });
-			commit('upsert', full.data);
-			return full.data;
+		async create({ dispatch, rootState }, data) {
+			const resp = await request(rootState, 'post', '', data);
+			return dispatch('get', resp.headers['openeo-identifier']);
 		},
-		async update({ commit, rootState }, { id, data }) {
-			const url = apiUrl(null, rootState);
-			await axios.patch(`${url}/schedules/${id}`, data, { headers: authHeaders(rootState) });
-			const full = await axios.get(`${url}/schedules/${id}`, { headers: authHeaders(rootState) });
-			commit('upsert', full.data);
-			return full.data;
+		async update({ dispatch, rootState }, { id, data }) {
+			await request(rootState, 'patch', `/${id}`, data);
+			return dispatch('get', id);
 		},
 		async delete({ commit, rootState }, id) {
-			const url = apiUrl(null, rootState);
-			await axios.delete(`${url}/schedules/${id}`, { headers: authHeaders(rootState) });
+			await request(rootState, 'delete', `/${id}`);
 			commit('remove', id);
 		},
-		async pause({ commit, rootState }, id) {
-			const url = apiUrl(null, rootState);
-			await axios.post(`${url}/schedules/${id}/pause`, null, { headers: authHeaders(rootState) });
-			const full = await axios.get(`${url}/schedules/${id}`, { headers: authHeaders(rootState) });
-			commit('upsert', full.data);
-			return full.data;
+		async pause({ dispatch, rootState }, id) {
+			await request(rootState, 'post', `/${id}/pause`);
+			return dispatch('get', id);
 		},
-		async resume({ commit, rootState }, id) {
-			const url = apiUrl(null, rootState);
-			await axios.post(`${url}/schedules/${id}/resume`, null, { headers: authHeaders(rootState) });
-			const full = await axios.get(`${url}/schedules/${id}`, { headers: authHeaders(rootState) });
-			commit('upsert', full.data);
-			return full.data;
+		async resume({ dispatch, rootState }, id) {
+			await request(rootState, 'post', `/${id}/resume`);
+			return dispatch('get', id);
 		},
 		async trigger({ rootState }, id) {
-			const url = apiUrl(null, rootState);
-			const resp = await axios.post(`${url}/schedules/${id}/trigger`, null, { headers: authHeaders(rootState) });
+			const resp = await request(rootState, 'post', `/${id}/trigger`);
 			return resp.headers['openeo-identifier'];
 		},
 		async runs({ rootState }, id) {
-			const url = apiUrl(null, rootState);
-			const resp = await axios.get(`${url}/schedules/${id}/runs`, { headers: authHeaders(rootState) });
-			return resp.data.runs || [];
+			const resp = await request(rootState, 'get', `/${id}/runs`);
+			return resp.data.runs;
 		},
 	},
 	mutations: {

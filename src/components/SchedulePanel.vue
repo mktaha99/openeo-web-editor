@@ -188,7 +188,6 @@ export default {
 .schedule-list { display: flex; flex-direction: column; gap: 8px; }
 .schedule-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #fafafa; }
 .schedule-card.paused { opacity: 0.7; }
-.schedule-card.deleted { display: none; }
 
 .schedule-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .status-badge { font-size: 0.75em; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; font-weight: bold; }

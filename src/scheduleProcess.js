@@ -2,7 +2,7 @@
  * The one shape a scheduled process may have: every run fills start_date and
  * end_date into load_collection's temporal_extent.
  * The backend enforces the same rules (app/engine/utils/schedule_process.py and
- * expressions.py), this module lets the Schedule form explain and fix problems before saving.
+ * date_rules.py), this module lets the Schedule form explain and fix problems before saving.
  */
 
 export const START = 'start_date';
